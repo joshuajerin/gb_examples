@@ -222,7 +222,12 @@ def main():
 
         # Crop the point cloud around the target object using the determined 2D point
         print("Requesting Point Cloud Cropping service...")
-        cropped_pcd_data = client.crop_point_cloud(pcd_ds, center_x, center_y)
+        if valid_3d_point_cam is not None:
+            print(f"💡 Using 3D point for cropping: {valid_3d_point_cam}")
+            cropped_pcd_data = client.crop_point_cloud(pcd_ds, center_x, center_y, target_point_cam_frame=valid_3d_point_cam)
+        else:
+            print(f"💡 Using 2D point ({center_x}, {center_y}) for cropping, as 3D point is not available.")
+            cropped_pcd_data = client.crop_point_cloud(pcd_ds, center_x, center_y)
 
         # Convert service response back to Open3D point cloud format
         cropped_pcd_cam_frame = o3d.geometry.PointCloud()
@@ -276,8 +281,8 @@ def main():
         
         # Call external ML service to predict grasp poses on the cropped object
         # Returns 6DOF grasp poses (position + orientation) in robot frame
-        grasps_response = client.predict_grasps(cropped_pcd_data_robot_frame, explicit_target_robot_frame_for_local=target_for_prediction_rob)
-        predicted_grasps_robot_frame = grasps_response.grasps
+        grasp_prediction_response = client.predict_grasps(cropped_pcd_data_robot_frame)
+        predicted_grasps_robot_frame = grasp_prediction_response.grasps if grasp_prediction_response else []
 
         print(f"Generated {len(predicted_grasps_robot_frame)} potential grasp candidates")
 
